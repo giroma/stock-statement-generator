@@ -35,58 +35,73 @@ const stock_actions = [
   {'date': '1992/10/16', 'dividend': '0.20', 'split': '', 'stock': 'ABC'}
 ]
 
-let mergedArray = actions.concat(stock_actions)
+let mergedArray = actions.concat(stock_actions) //merge 2 arrays since each object is displayed  per date
 
-mergedArray.sort((a,b) => {
+mergedArray.sort((a,b) => {//sort by date
   return new Date(a.date) - new Date(b.date);
 })
 
-let cumulativeShares = {}
-let cumulativeDividend = 0
-let finalOutput = ''
+let cumulativeShares = {}//empty object to add key value pairs to, structure {'APPL': {'sharesAmount': 500, 'avgPrice': 12.3}}
+let cumulativeDividend = 0//dividend income initiated
+let finalOutput = ''//what is displayed in a large string as the complete output
+
+const cumulativeDisplay = (output, action, date) => { //commonly reused code for displaying cumulative shares and divident
+  output += `On ${date}, you have:\n`
+  for (var key in cumulativeShares) {//iterate over each ticker we own
+    if (cumulativeShares[key].sharesAmount > 0) {  output += `    - ${cumulativeShares[key].sharesAmount} shares of ${key} at ${cumulativeShares[key].avgPrice.toFixed(2)} per share\n`}
+  }
+  output += `    - $${cumulativeDividend} of dividend income \n` +
+            '  Transactions:\n'
+  return output
+}
+
+const weightedAverage = (action, shares) => {//calculate new weighted avreage price per share
+  cumulativeShares[action.ticker].avgPrice = (cumulativeShares[action.ticker].avgPrice * cumulativeShares[action.ticker].sharesAmount + action.price * action.shares)/(+cumulativeShares[action.ticker].sharesAmount + +action.shares)
+  cumulativeShares[action.ticker].sharesAmount += shares
+}
+
+const sellProfit = (action, shares) => {
+  return shares*action.price - shares*cumulativeShares[action.ticker].avgPrice
+}
+
+//TODO   same date
 
 mergedArray.forEach((action) => {
-  let ticker = action.ticker
-  let shares = Number(action.shares)
+  let shares = +action.shares
   let date = moment(action.date).format('YYYY-MM-DD')
-  let output = ``
+  let output = `` //reset output for each iteration
 
-  if (action.shares) { //transactions
+  if (shares) { //transactions object, because only they have a shares key and value
     if (action.action == 'BUY') {//BUY
-      output += `On ${date}, you have:\n`
-      cumulativeShares[ticker] ? cumulativeShares[ticker] += shares : cumulativeShares[ticker] = shares
-      for (var key in cumulativeShares) {
-        if (cumulativeShares[key] > 0) {  output += `    - ${cumulativeShares[key]} shares of ${key} at ${action.price} per share\n`}
+
+      if (cumulativeShares[action.ticker]) {//if stock already owned, add to it
+        weightedAverage(action, shares)
+      } else {//if not,create object first
+        cumulativeShares[action.ticker] = {'sharesAmount': +shares, 'avgPrice': +action.price}
       }
-      output += `  Transactions:\n` +
-                `    - You bought ${action.shares} shares of ${action.ticker} at a price of ${action.price} per share \n`
+      output += cumulativeDisplay(output, action, date)
+      output += `    - You bought ${shares} shares of ${action.ticker} at a price of ${action.price} per share \n`
     } else { //SELL
-      cumulativeShares[ticker] -= shares
-      output += `On ${date}, you have:\n`
-      for (var key in cumulativeShares) {
-        if (cumulativeShares[key] > 0) {  output += `    - ${cumulativeShares[key]} shares of ${key} at ${action.price} per share\n`}
-      }
-      output += `  Transactions:\n` +
-                `    - You sold ${action.shares} shares of ${action.ticker} at a price of ${action.price} per share for a profit of $${(action.shares)*(action.price)}\n`
+      cumulativeShares[action.ticker].sharesAmount -= shares //subtract sold shares
+      output += cumulativeDisplay(output, action, date)
+      output += `    - You sold ${shares} shares of ${action.ticker} at a price of ${action.price} per share for a profit of $${sellProfit(action, shares)}\n`
     }
 
-  } else { //dividents
+  } else { //dividends
     if (cumulativeShares[action.stock]) {//only output if you own this stock
-      output += `On ${date}, you have:\n`
-      for (var key in cumulativeShares) {
-        if (cumulativeShares[key] > 0) {  output += `    - ${cumulativeShares[key]} shares of ${key} at ${action.price} per share\n`}
+      cumulativeDividend += (action.dividend*cumulativeShares[action.stock].sharesAmount)
+
+      if (action.split) {//if a stock split happens
+        cumulativeShares[action.stock].sharesAmount *= action.split
+        cumulativeShares[action.stock].avgPrice /= action.split
+        output += cumulativeDisplay(output, action, date)
+        output += `    - ${action.stock} split ${action.split} to 1, and you have ${cumulativeShares[action.stock].sharesAmount} shares\n`
+      }else{//dividend paid out
+        output += cumulativeDisplay(output, action, date)
+        output += `    - ${action.stock} paid out ${action.dividend} dividend per share, and you have ${cumulativeShares[action.stock].sharesAmount} shares\n`
       }
-      console.log('dividend',action.dividend);
-      cumulativeDividend += (action.dividend*cumulativeShares[action.stock])
-      console.log('cumulativeDividend',cumulativeDividend);
-      if (action.split) {
-        cumulativeShares[action.stock] *= action.split
-      }
-      output += `  Transactions:\n` +
-      `    - ${action.stock} paid out ${action.dividend} dividend per share, and you have ${cumulativeShares[action.stock]} shares\n`
     }
   }
-  console.log(cumulativeShares);
   finalOutput += output
 })
 console.log(finalOutput);
