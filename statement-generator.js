@@ -102,9 +102,6 @@ mergedArray.sort((a,b) => {//sort by date
   return new Date(a.date) - new Date(b.date);
 })
 
-let cumulativeShares = {}//empty object to add key value pairs to, structure {'APPL': {'sharesAmount': 500, 'avgPrice': 12.3}}
-let cumulativeDividend = 0//dividend income initiated
-let finalOutput = ''//what is displayed in a large string as the complete output
 
 const cumulativeDisplay = (output, action, date) => { //commonly reused code for displaying cumulative shares and divident
   output += `On ${date}, you have:\n`
@@ -128,7 +125,10 @@ const sellProfit = (action, shares) => {
   return shares*action.price - shares*cumulativeShares[action.ticker].avgPrice
 }
 
-let transactions //declare transactions output string, outside loop, so it does not reset every iteration
+let cumulativeShares = {}//empty object to add key value pairs to, structure {'APPL': {'sharesAmount': 500, 'avgPrice': 12.3}}
+let cumulativeDividend = 0//dividend income initiated
+let transactions = '' //declare transactions output string, outside loop, so it persists for same date transaction scenarios
+let finalOutput = ''//what is displayed in a large string as the complete output
 mergedArray.forEach((action,index) => {
   let shares = +action.shares
   let date = moment(action.date).format('YYYY-MM-DD')
