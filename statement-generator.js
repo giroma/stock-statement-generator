@@ -48,15 +48,18 @@ let finalOutput = ''//what is displayed in a large string as the complete output
 const cumulativeDisplay = (output, action, date) => { //commonly reused code for displaying cumulative shares and divident
   output += `On ${date}, you have:\n`
   for (var key in cumulativeShares) {//iterate over each ticker we own
-    if (cumulativeShares[key].sharesAmount > 0) {  output += `    - ${cumulativeShares[key].sharesAmount} shares of ${key} at ${cumulativeShares[key].avgPrice.toFixed(2)} per share\n`}
+    if (cumulativeShares[key].sharesAmount > 0) {  output += `    - ${cumulativeShares[key].sharesAmount} shares of ${key} at $${cumulativeShares[key].avgPrice.toFixed(2)} per share\n`}
   }
-  output += `    - $${cumulativeDividend} of dividend income \n` +
+  output += `    - $${cumulativeDividend.toFixed(2)} of dividend income \n` +
             '  Transactions:\n'
   return output
 }
 
 const weightedAverage = (action, shares) => {//calculate new weighted avreage price per share
-  cumulativeShares[action.ticker].avgPrice = (cumulativeShares[action.ticker].avgPrice * cumulativeShares[action.ticker].sharesAmount + action.price * action.shares)/(+cumulativeShares[action.ticker].sharesAmount + +action.shares)
+  cumulativeShares[action.ticker].avgPrice =
+    (cumulativeShares[action.ticker].avgPrice * cumulativeShares[action.ticker].sharesAmount + action.price * action.shares)
+    /(+cumulativeShares[action.ticker].sharesAmount + +action.shares)
+
   cumulativeShares[action.ticker].sharesAmount += shares
 }
 
@@ -64,14 +67,23 @@ const sellProfit = (action, shares) => {
   return shares*action.price - shares*cumulativeShares[action.ticker].avgPrice
 }
 
-//TODO   same date
-
-mergedArray.forEach((action) => {
+let transactions //declare transactions output string, outside loop, so it does not reset every iteration
+mergedArray.forEach((action,index) => {
   let shares = +action.shares
   let date = moment(action.date).format('YYYY-MM-DD')
+  let sameDate = false //samedate starts as false, and is switched to true if index+1 date is same
   let output = `` //reset output for each iteration
 
-  if (shares) { //transactions object, because only they have a shares key and value
+  if (mergedArray[index+1] && moment(action.date).format('YYYY-MM-DD') == moment(mergedArray[index+1].date).format('YYYY-MM-DD')) {
+    sameDate = true //switched to true if index+1 date is same
+  }
+
+  if (mergedArray[index-1] && moment(action.date).format('YYYY-MM-DD') != moment(mergedArray[index-1].date).format('YYYY-MM-DD')) {
+    transactions = '' //reset transactions if last iterations date is not the same, otherwise keep it from last iteration
+  }
+
+  if (shares) { //transaction objects, because only they have a shares key and value
+    //BUY
     if (action.action == 'BUY') {//BUY
 
       if (cumulativeShares[action.ticker]) {//if stock already owned, add to it
@@ -80,14 +92,15 @@ mergedArray.forEach((action) => {
         cumulativeShares[action.ticker] = {'sharesAmount': +shares, 'avgPrice': +action.price}
       }
       output += cumulativeDisplay(output, action, date)
-      output += `    - You bought ${shares} shares of ${action.ticker} at a price of ${action.price} per share \n`
+      transactions += `    - You bought ${shares} shares of ${action.ticker} at a price of $${Number(action.price).toFixed(2)} per share \n`
+    //SELL
     } else { //SELL
       cumulativeShares[action.ticker].sharesAmount -= shares //subtract sold shares
       output += cumulativeDisplay(output, action, date)
-      output += `    - You sold ${shares} shares of ${action.ticker} at a price of ${action.price} per share for a profit of $${sellProfit(action, shares)}\n`
+      transactions += `    - You sold ${shares} shares of ${action.ticker} at a price of $${Number(action.price).toFixed(2)} per share for a ${sellProfit(action, shares)>0 ? 'profit' : 'loss'} of $${sellProfit(action, shares).toFixed(2)}\n`
     }
 
-  } else { //dividends
+  } else { //dividend objects
     if (cumulativeShares[action.stock]) {//only output if you own this stock
       cumulativeDividend += (action.dividend*cumulativeShares[action.stock].sharesAmount)
 
@@ -95,13 +108,13 @@ mergedArray.forEach((action) => {
         cumulativeShares[action.stock].sharesAmount *= action.split
         cumulativeShares[action.stock].avgPrice /= action.split
         output += cumulativeDisplay(output, action, date)
-        output += `    - ${action.stock} split ${action.split} to 1, and you have ${cumulativeShares[action.stock].sharesAmount} shares\n`
+        transactions += `    - ${action.stock} split ${action.split} to 1, and you have ${cumulativeShares[action.stock].sharesAmount} shares\n`
       }else{//dividend paid out
         output += cumulativeDisplay(output, action, date)
-        output += `    - ${action.stock} paid out ${action.dividend} dividend per share, and you have ${cumulativeShares[action.stock].sharesAmount} shares\n`
+        transactions += `    - ${action.stock} paid out $${action.dividend} dividend per share, and you have ${cumulativeShares[action.stock].sharesAmount} shares\n`
       }
     }
   }
-  finalOutput += output
+  sameDate ? '' : finalOutput += (output += transactions) //only add output to final if the next iteration is NOT the same date
 })
 console.log(finalOutput);
