@@ -86,7 +86,7 @@ const actions = [
   {'date': '1992/10/19 15:14:20', 'action': 'BUY', 'price': '21', 'ticker': 'MSFT', 'shares': '500'},
   {'date': '1992/10/23 16:14:30', 'action': 'SELL', 'price': '18.2', 'ticker': 'MSFT', 'shares': '600'},
   {'date': '1992/10/25 10:15:20', 'action': 'SELL', 'price': '20.3', 'ticker': 'AAPL', 'shares': '300'},
-  {'date': '1992/10/25 16:12:10', 'action': 'BUY', 'price': '18.3', 'ticker': 'MSFT', 'shares': '500'}
+  {'date': '1992/10/25 16:12:10', 'action': 'BUY', 'price': '18.3', 'ticker': 'MSFT', 'shares': '500'},
 ]
 
 const stock_actions = [
@@ -129,18 +129,17 @@ let cumulativeShares = {}//empty object to add key value pairs to, structure {'A
 let cumulativeDividend = 0//dividend income initiated
 let transactions = '' //declare transactions output string, outside loop, so it persists for same date transaction scenarios
 let finalOutput = ''//what is displayed in a large string as the complete output
+let sameDate = false
 mergedArray.forEach((action,index) => {
   let shares = +action.shares
   let date = moment(action.date).format('YYYY-MM-DD')
-  let sameDate = false //samedate starts as false, and is switched to true if index+1 date is same
   let output = `` //reset output for each iteration
 
+  //handling same date scenario
+  sameDate ? '' : transactions = '' //reset trasactions if sameDate is false from last iteration
+  sameDate = false //samedate starts as false each itertion, and is switched to true if index+1 date is same
   if (mergedArray[index+1] && moment(action.date).format('YYYY-MM-DD') == moment(mergedArray[index+1].date).format('YYYY-MM-DD')) {
     sameDate = true //switched to true if index+1 date is same
-  }
-
-  if (mergedArray[index-1] && moment(action.date).format('YYYY-MM-DD') != moment(mergedArray[index-1].date).format('YYYY-MM-DD')) {
-    transactions = '' //reset transactions if last iterations date is not the same, otherwise keep it from last iteration
   }
 
   if (shares) { //transaction objects, because only they have a shares key and value
